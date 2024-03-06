@@ -1,32 +1,48 @@
-/**
- * Welcome to Cloudflare Workers! This is your first worker.
- *
- * - Run `npm run dev` in your terminal to start a development server
- * - Open a browser tab at http://localhost:8787/ to see your worker in action
- * - Run `npm run deploy` to publish your worker
- *
- * Learn more at https://developers.cloudflare.com/workers/
- */
+type Env = {
+  KV: KVNamespace
+  DISCORD_WEBHOOK_URL: string
+}
 
-export interface Env {
-	// Example binding to KV. Learn more at https://developers.cloudflare.com/workers/runtime-apis/kv/
-	// MY_KV_NAMESPACE: KVNamespace;
-	//
-	// Example binding to Durable Object. Learn more at https://developers.cloudflare.com/workers/runtime-apis/durable-objects/
-	// MY_DURABLE_OBJECT: DurableObjectNamespace;
-	//
-	// Example binding to R2. Learn more at https://developers.cloudflare.com/workers/runtime-apis/r2/
-	// MY_BUCKET: R2Bucket;
-	//
-	// Example binding to a Service. Learn more at https://developers.cloudflare.com/workers/runtime-apis/service-bindings/
-	// MY_SERVICE: Fetcher;
-	//
-	// Example binding to a Queue. Learn more at https://developers.cloudflare.com/queues/javascript-apis/
-	// MY_QUEUE: Queue;
+const task = async (env: Env) => {
+	// create new key
+  const S = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+  const N = 16
+  const key = [...Array(N)].map(() => S[Math.floor(Math.random() * S.length)]).join('')
+  await env.KV.put('key', key)
+	// create message
+  const message = {
+    content: '@here',
+    embeds: [
+      {
+        color: 1667583,
+        title: 'Paimon+ :key:',
+        url: 'https://paimon.plus/?auth=' + key,
+        description: 'Monthly Update',
+        thumbnail: {
+          url: 'https://paimon.plus/maskable_icon_x128.png',
+        },
+      },
+      {
+        color: 1667583,
+        title: 'Image Generator :key:',
+        url: 'https://image-generator.luis.fun/?auth=' + key,
+        description: 'Monthly Update',
+        thumbnail: {
+          url: 'https://image-generator.luis.fun/favicon.png',
+        },
+      },
+    ],
+  }
+	// send message
+  await fetch(env.DISCORD_WEBHOOK_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(message),
+  })
 }
 
 export default {
-	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-		return new Response('Hello World!');
-	},
-};
+  async scheduled(controller: any, env: Env, ctx: any) {
+    ctx.waitUntil(task(env))
+  },
+}
